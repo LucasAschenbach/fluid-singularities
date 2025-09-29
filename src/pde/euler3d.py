@@ -51,12 +51,8 @@ class Euler3DPDE(PDE):
 
         # Gradient tensor for u wrt (t,x,y,z): J_u[n, i, k] = d u_i / d[t,x,y,z]_k
         J_u = torch.stack([self._grad(u[:, i:i+1], txyz) for i in range(3)], dim=1)  # [N,3,4]
-
-        # du/dt is column k=0
-        du_dt = J_u[:, :, 0]
-
-        # Spatial gradients (x,y,z) are columns k=1..3
-        grads = J_u[:, :, 1:4]  # [N,3,3]
+        du_dt = J_u[:, :, 0]  # du/dt, k=0
+        grads = J_u[:, :, 1:4]  # Spatial gradients (x,y,z), k=1..3
 
         # Divergence: trace of grads
         div_u = torch.diagonal(grads, dim1=1, dim2=2).sum(dim=1, keepdim=True)
