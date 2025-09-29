@@ -13,7 +13,7 @@ class Euler3DLoss(ResidualLoss):
 
 
 class Euler3DPDE(PDE):
-    """3D incompressible Euler PDE residuals using torch autograd.
+    """3D incompressible Euler PDE residuals.
 
     Equations (rho=1):
         - Mass: div(u) = 0
@@ -68,7 +68,7 @@ class Euler3DPDE(PDE):
         grad_p = self._grad(p, txyz)[:, 1:4]
 
         # momentum residual
-        mom_res = du_dt + conv + grad_p
+        mom_res = self.rho * (du_dt + conv) + grad_p
 
         pde_residual = torch.cat([mom_res, div_u], dim=1)  # [N,4]
 
