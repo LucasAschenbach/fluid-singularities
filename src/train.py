@@ -1,0 +1,152 @@
+from __future__ import annotations
+
+import argparse
+import os
+import time
+from dataclasses import dataclass
+from typing import Optional
+from tqdm import tqdm
+
+import torch
+from torch import optim
+from torch.utils.tensorboard import SummaryWriter
+
+from pde import Euler3DPDE
+from model import MLP
+from utils import get_device, set_seed
+
+
+@dataclass
+class TrainConfig:
+    epochs: int = 2000
+    batch_size: int = 4096
+    steps_per_epoch: int = 15
+    lr: float = 1e-3
+    w_pde: float = 1.0
+    w_bc: float = 0.1
+    seed: int = 42
+    ckpt: Optional[str] = None
+    log_dir: str = "runs"
+    run_name: str = "euler3d"
+    ckpt_interval: int = 5
+    device: str = get_device()
+
+
+def save_checkpoint(model: torch.nn.Module, cfg: TrainConfig, log_dir: str, name: str) -> None:
+    ckpt_path = os.path.join(log_dir, name)
+    torch.save({"model": model.state_dict(), "config": cfg.__dict__}, ckpt_path)
+
+
+def train(cfg: TrainConfig) -> None:
+    # Logging setup
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    log_dir = cfg.log_dir + f"/{cfg.run_name}_{timestamp}"
+    os.makedirs(log_dir, exist_ok=True)
+    writer = SummaryWriter(log_dir=log_dir)
+
+    device = torch.device(cfg.device)
+    set_seed(cfg.seed)
+
+    pde = Euler3DPDE(device=device)
+    domain = [(0.0, 1.0),
+              (0.0, 1.0),
+              (0.0, 1.0),
+              (0.0, 1.0)]  # t,x,y,z in [0,1]
+
+    # Model
+    # TODO: load from checkpoint if provided
+    model = MLP(in_dim=pde.input_dim, out_dim=pde.output_dim,
+            hidden_layers=[128, 128, 128, 128], activation="tanh",
+            use_positional_encoding=True).to(device)
+
+    opt = optim.Adam(model.parameters(), lr=cfg.lr)
+
+    model.train()
+    global_step = 0
+    loss = torch.tensor(float("inf"))
+    prev_loss_val = float("inf")
+    for epoch in range(1, cfg.epochs + 1):
+        # Sample collocation points once per epoch
+        txyz_epoch = torch.rand(cfg.batch_size, 4, device=device)
+        txyz_epoch = (
+            txyz_epoch * torch.tensor([b - a for a, b in domain], device=device)
+            + torch.tensor([a for a, b in domain], device=device)
+        )
+
+        train_loop = tqdm(range(cfg.steps_per_epoch), desc=f"Epoch {epoch}/{cfg.epochs}")
+        for step in train_loop:
+            opt.zero_grad()
+            txyz = txyz_epoch.detach().requires_grad_(True) # create fresh leaf tensor
+
+            residual = pde.residuals(model, txyz)
+            loss = residual.total(w_pde=cfg.w_pde, w_bc=cfg.w_bc)
+
+            loss.backward()
+            opt.step()
+
+            # logging
+            train_loop.set_postfix(
+                loss=loss.item(),
+                pde=residual.pde.norm().item(),
+                bc=residual.bc.norm().item() if residual.bc is not None else 0.0,
+            )
+            writer.add_scalar("loss/total", loss.item(), global_step)
+            writer.add_scalar("loss/pde", residual.pde.norm().item(), global_step)
+            if residual.bc is not None:
+                writer.add_scalar("loss/bc", residual.bc.norm().item(), global_step)
+
+            global_step += 1
+
+        if epoch % cfg.ckpt_interval == 0 and epoch > 0:
+            save_checkpoint(model, cfg, log_dir, f"model_{epoch}.pt")
+        if loss.item() < prev_loss_val and epoch > cfg.ckpt_interval:
+            save_checkpoint(model, cfg, log_dir, "model_best.pt")
+            prev_loss_val = loss.item()
+    
+    save_checkpoint(model, cfg, log_dir, f"model_{cfg.epochs}.pt")
+    print("Training completed.")
+
+    # Simple validation: compare on a grid
+    model.eval()
+    # TODO: implement proper validation
+    writer.close()
+
+
+def build_argparser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description="Train a PINN on a PDE operator.")
+    p.add_argument("--epochs", type=int, default=TrainConfig.epochs)
+    p.add_argument("--batch-size", type=int, default=TrainConfig.batch_size)
+    p.add_argument("--epoch-steps", type=int, default=TrainConfig.steps_per_epoch)
+    p.add_argument("--lr", type=float, default=TrainConfig.lr)
+    p.add_argument("--w-pde", type=float, default=TrainConfig.w_pde)
+    p.add_argument("--w-bc", type=float, default=TrainConfig.w_bc)
+    p.add_argument("--seed", type=int, default=TrainConfig.seed)
+    p.add_argument("--ckpt", type=str, default=None)
+    p.add_argument("--log-dir", type=str, default=TrainConfig.log_dir)
+    p.add_argument("--run-name", type=str, default=TrainConfig.run_name)
+    p.add_argument("--ckpt-interval", type=int, default=TrainConfig.ckpt_interval)
+    p.add_argument("--device", type=str, default=TrainConfig.device)
+    return p
+
+
+def main() -> None:
+    args = build_argparser().parse_args()
+    cfg = TrainConfig(
+        epochs=args.epochs,
+        batch_size=args.batch_size,
+        steps_per_epoch=args.epoch_steps,
+        lr=args.lr,
+        w_pde=args.w_pde,
+        w_bc=args.w_bc,
+        seed=args.seed,
+        ckpt=args.ckpt,
+        log_dir=args.log_dir,
+        run_name=args.run_name,
+        ckpt_interval=args.ckpt_interval,
+        device=args.device,
+    )
+    train(cfg)
+
+
+if __name__ == "__main__":
+    main()
