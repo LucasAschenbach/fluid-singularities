@@ -55,16 +55,25 @@ class BoundaryData:
 class PDE:
     """Base class for PDE definitions."""
 
-    def __init__(self, input_dim: int = 4, output_dim: int = 4, device: typing.Optional[torch.device] = None) -> None:
+    def __init__(
+        self,
+        input_dim: int = 4,
+        output_dim: int = 4,
+        bc: typing.Optional[BoundaryData] = None,
+        device: typing.Optional[torch.device] = None,
+    ) -> None:
         """Initialize PDE with input/output dimensions.
         
         Args:
             input_dim: Input dimension (default 4 for t,x,y,z)
             output_dim: Output dimension (default 4 for u,v,w,p)
+            bc: optional BoundaryData to enforce Dirichlet conditions with an
+                optional per-output mask.
             device: Optional torch device for tensors
         """
         self.input_dim = input_dim
         self.output_dim = output_dim
+        self.bc = bc
         self.device = device
 
     @staticmethod
@@ -87,7 +96,6 @@ class PDE:
         self,
         model: torch.nn.Module,
         inputs: torch.Tensor,
-        bc: typing.Optional[BoundaryData] = None,
     ) -> ResidualLoss:
         """Compute PDE residuals at collocation points and BC residuals.
 

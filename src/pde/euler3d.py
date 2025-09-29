@@ -22,23 +22,20 @@ class Euler3DPDE(PDE):
     Network maps (t, x, y, z) -> (u, v, w, p).
     """
 
-    def __init__(self, rho: float = 1.0, device: Optional[torch.device] = None) -> None:
-        super().__init__(input_dim=4, output_dim=4, device=device)
+    def __init__(self, rho: float = 1.0, bc: Optional[BoundaryData] = None, device: Optional[torch.device] = None) -> None:
+        super().__init__(input_dim=4, output_dim=4, bc=bc, device=device)
         self.rho = rho
 
     def residuals(
         self,
         model: torch.nn.Module,
         inputs: torch.Tensor,
-        bc: Optional[BoundaryData] = None,
     ) -> Euler3DLoss:
         """Compute PDE residuals and masked BC residuals.
 
         Args:
             model: network mapping (t,x,y,z)->(u,v,w,p)
             inputs: [N,4] requires_grad=True
-            bc: optional BoundaryData to enforce Dirichlet conditions with an
-                optional per-output mask.
         Returns:
             Euler3DLoss containing PDE residuals and optional BC residual.
         """
@@ -69,7 +66,7 @@ class Euler3DPDE(PDE):
         pde_residual = torch.cat([mom_res, div_u], dim=1)  # [N,4]
 
         bc_residual = None
-        if bc is not None:
-            bc_residual = bc.residual(out)
+        if self.bc is not None:
+            bc_residual = self.bc.residual(out)
 
         return Euler3DLoss(pde=pde_residual, bc=bc_residual)
