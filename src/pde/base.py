@@ -69,7 +69,20 @@ class PDE:
 
     @staticmethod
     def _grad(outputs: torch.Tensor, inputs: torch.Tensor) -> torch.Tensor:
-        return torch.autograd.grad(outputs, inputs, grad_outputs=torch.ones_like(outputs), create_graph=True)[0]
+        if not inputs.requires_grad:
+            raise ValueError("Inputs must require grad for autograd derivatives.")
+        # If `outputs` don't require grad (e.g., constant model), return zeros
+        if not outputs.requires_grad:
+            return torch.zeros_like(inputs)
+
+        grad = torch.autograd.grad(
+            outputs,
+            inputs,
+            grad_outputs=torch.ones_like(outputs),
+            create_graph=True, # needed for higher-order derivatives
+            allow_unused=True, # avoid `None` if no dependency on inputs
+        )[0]
+        return grad
 
     def residuals(
         self,

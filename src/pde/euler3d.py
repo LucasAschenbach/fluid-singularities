@@ -52,45 +52,23 @@ class Euler3DPDE(PDE):
         u = out[:, :3]  # [N,3]
         p = out[:, 3:4]  # [N,1]
 
-        # unpack inputs
-        t = txyz[:, 0:1]
-        x = txyz[:, 1:2]
-        y = txyz[:, 2:3]
-        z = txyz[:, 3:4]
+        # Gradient tensor for u wrt (t,x,y,z): J_u[n, i, k] = d u_i / d[t,x,y,z]_k
+        J_u = torch.stack([self._grad(u[:, i:i+1], txyz) for i in range(3)], dim=1)  # [N,3,4]
 
-        # time derivative
-        du_dt = torch.zeros_like(u)
-        for i in range(3):
-            du_dt[:, i:i+1] = self._grad(u[:, i:i+1], t)
+        # du/dt is column k=0
+        du_dt = J_u[:, :, 0]
 
-        # spatial gradients
-        grads = []  # each: [N,3] gradient wrt (x,y,z)
-        for i in range(3):
-            ui = u[:, i:i+1]
-            du_dx = self._grad(ui, x)
-            du_dy = self._grad(ui, y)
-            du_dz = self._grad(ui, z)
-            grads.append(torch.cat([du_dx, du_dy, du_dz], dim=1))
-        # grads[i][..., j] = d u_i / d [x,y,z]_j
+        # Spatial gradients (x,y,z) are columns k=1..3
+        grads = J_u[:, :, 1:4]  # [N,3,3]
 
-        # divergence
-        div_u = grads[0][:, 0:1] + grads[1][:, 1:2] + grads[2][:, 2:2+1]
+        # Divergence: trace of grads
+        div_u = torch.diagonal(grads, dim1=1, dim2=2).sum(dim=1, keepdim=True)
 
-        # convective term (u · ∇)u
-        conv = torch.zeros_like(u)
-        for i in range(3):
-            # u_x * du_i/dx + u_y * du_i/dy + u_z * du_i/dz
-            conv[:, i:i+1] = (
-                u[:, 0:1] * grads[i][:, 0:1]
-                + u[:, 1:2] * grads[i][:, 1:2]
-                + u[:, 2:3] * grads[i][:, 2:3]
-            )
+        # Convective term (u · ∇)u = grads @ u (batched matmul)
+        conv = torch.bmm(grads, u.unsqueeze(2)).squeeze(2)
 
-        # pressure gradient
-        dp_dx = self._grad(p, x)
-        dp_dy = self._grad(p, y)
-        dp_dz = self._grad(p, z)
-        grad_p = torch.cat([dp_dx, dp_dy, dp_dz], dim=1)
+        # Pressure gradient wrt (x,y,z)
+        grad_p = self._grad(p, txyz)[:, 1:4]
 
         # momentum residual
         mom_res = du_dt + conv + grad_p
