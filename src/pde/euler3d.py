@@ -40,8 +40,6 @@ class Euler3DPDE(PDE):
             inputs: [N,4] requires_grad=True
             bc: optional BoundaryData to enforce Dirichlet conditions with an
                 optional per-output mask.
-            data: DEPRECATED. If provided (and `bc` is None), treated as a
-                  fully-specified Dirichlet target with mask=1.
         Returns:
             Euler3DLoss containing PDE residuals and optional BC residual.
         """
