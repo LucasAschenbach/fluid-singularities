@@ -40,7 +40,7 @@ This repository implements the techniques step by step:
 * [ ] **Equation Implementations**
 
   * [x] 3D incompressible Euler equations (baseline test case).
-  * [ ] 1D Córdoba–Córdoba–Fontelos equations (CCF).
+  * [ ] 1D Córdoba-Córdoba-Fontelos equations (CCF).
   * [ ] 2D Boussinesq equations (axisymmetric Euler analogue).
   * [ ] 2D Incompressible Porous Media (IPM) equations with boundary.
 
@@ -63,13 +63,13 @@ This repository implements the techniques step by step:
 * [ ] **High-Precision Optimization**
 
   * [ ] Implement Gauss–Newton optimizer with unbiased rank-1 curvature estimates.
-  * [ ] Integrate damping schedules (Levenberg–Marquardt style).
+  * [ ] Integrate damping schedules (Levenberg-Marquardt style).
   * [ ] Compare with Adam / L-BFGS baselines.
 
 * [ ] **Multi-Stage Training**
 
   * [ ] Add secondary refinement networks to capture high-frequency error.
-  * [ ] Validate whether residuals can be reduced to $10^{-11}$ – $10^{-13}$ as in the paper.
+  * [ ] Validate whether residuals can be reduced to $10^{-11}$ - $10^{-13}$ as in the paper.
 
 * [ ] **Stability Analysis**
 
@@ -78,5 +78,5 @@ This repository implements the techniques step by step:
 
 * [ ] **Validation & Replication**
 
-  * [ ] Benchmark PDE residuals against reported values (e.g. CCF 1st unstable: $10^{-13}$, IPM/Boussinesq unstable: $10^{-8}$ – $10^{-7}$).
+  * [ ] Benchmark PDE residuals against reported values (e.g. CCF 1st unstable: $10^{-13}$, IPM/Boussinesq unstable: $10^{-8}$ - $10^{-7}$).
   * [ ] Reproduce empirical λ-asymptotic laws for instability hierarchy.
