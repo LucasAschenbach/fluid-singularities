@@ -45,15 +45,14 @@ This repository implements the techniques step by step:
 
 * [ ] **Self-Similar Solution Ansatz**
   Implement generalized ansatz:
-  $$
-  \phi_A(x,t) = (1-t)^{k_A(\lambda)} , \Phi_A!\left(\tfrac{x}{(1-t)^{1+\lambda}}\right),
-  \quad E_k(\Phi, \lambda) = 0
-  $$
+
+  $$\phi_A(x,t) = (1-t)^{k_A(\lambda)} , \Phi_A!\left(\tfrac{x}{(1-t)^{1+\lambda}}\right),
+  \quad E_k(\Phi, \lambda) = 0$$
+
   with compactified coordinate transform:
-  $$
-  q = (1+|y|^2)^{-\frac{1}{2(1+\lambda)}},
-  \quad \beta = \tfrac{y_2}{\sqrt{1+|y|^2}}.
-  $$
+
+  $$q = (1+|y|^2)^{-\frac{1}{2(1+\lambda)}},
+  \quad \beta = \tfrac{y_2}{\sqrt{1+|y|^2}}.$$
 
 * [ ] **Admissible λ Discovery**
 
@@ -69,7 +68,7 @@ This repository implements the techniques step by step:
 * [ ] **Multi-Stage Training**
 
   * [ ] Add secondary refinement networks to capture high-frequency error.
-  * [ ] Validate whether residuals can be reduced to $10^{-11}$–$10^{-13}$ as in the paper.
+  * [ ] Validate whether residuals can be reduced to $10^{-11}$ – $10^{-13}$ as in the paper.
 
 * [ ] **Stability Analysis**
 
@@ -78,5 +77,5 @@ This repository implements the techniques step by step:
 
 * [ ] **Validation & Replication**
 
-  * [ ] Benchmark PDE residuals against reported values (e.g. CCF 1st unstable: $10^{-13}$, IPM/Boussinesq unstable: $10^{-8}$–$10^{-7}$).
+  * [ ] Benchmark PDE residuals against reported values (e.g. CCF 1st unstable: $10^{-13}$, IPM/Boussinesq unstable: $10^{-8}$ – $10^{-7}$).
   * [ ] Reproduce empirical λ-asymptotic laws for instability hierarchy.
