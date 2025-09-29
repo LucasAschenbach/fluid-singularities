@@ -53,7 +53,7 @@ class ModelUx(torch.nn.Module):
         return torch.cat([u, p], dim=1)
     
 
-class ABCModel(torch.nn.Module):
+class ModelABC(torch.nn.Module):
     """Returns the ABC flow solution for testing."""
 
     def __init__(self, A=1.0, B=1.0, C=1.0):
@@ -115,7 +115,6 @@ class TestEuler3DResiduals(unittest.TestCase):
 
 
     def test_dirichlet_bc_masking_on_velocity_only(self):
-        pde = Euler3DPDE()
         model = ModelConst(vals=(1.0, -2.0, 3.0, 4.0))
         inputs = make_inputs(N=5)
 
@@ -124,8 +123,9 @@ class TestEuler3DResiduals(unittest.TestCase):
         mask = torch.zeros_like(target)
         mask[:, 0:3] = 1.0  # enforce u,v,w only
         bc = BoundaryData(target=target, mask=mask)
+        pde = Euler3DPDE(bc=bc)
 
-        loss = pde.residuals(model, inputs, bc=bc)
+        loss = pde.residuals(model, inputs)
         expected_bc = torch.tensor([1.0, -2.0, 3.0, 0.0], dtype=inputs.dtype).repeat(inputs.shape[0], 1)
         self.assertIsNotNone(loss.bc)
         self.assertTrue(torch.allclose(loss.bc, expected_bc, atol=1e-7))
@@ -153,8 +153,8 @@ class TestEuler3DResiduals(unittest.TestCase):
 
     def test_abc_solution_pde_residual_is_zero(self):
         pde = Euler3DPDE()
-        model = ABCModel(A=1.0, B=1.0, C=1.0)
-        inputs = ABCModel.sample_points(10, device=pde.device)
+        model = ModelABC(A=1.0, B=1.0, C=1.0)
+        inputs = ModelABC.sample_points(10, device=pde.device)
         inputs.requires_grad_(True)
 
         loss = pde.residuals(model, inputs)
