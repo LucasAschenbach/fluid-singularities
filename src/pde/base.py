@@ -69,8 +69,7 @@ class PDE:
 
     @staticmethod
     def _grad(outputs: torch.Tensor, inputs: torch.Tensor) -> torch.Tensor:
-        if not inputs.requires_grad:
-            raise ValueError("Inputs must require grad for autograd derivatives.")
+        assert inputs.requires_grad, "Inputs must require grad for autograd derivatives."
         # If `outputs` don't require grad (e.g., constant model), return zeros
         if not outputs.requires_grad:
             return torch.zeros_like(inputs)
