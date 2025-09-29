@@ -3,6 +3,8 @@ import sys
 
 import torch
 import unittest
+import math
+from typing import Tuple
 
 
 # Make `src` importable
@@ -49,6 +51,49 @@ class ModelUx(torch.nn.Module):
         u = torch.cat([x, torch.zeros_like(x), torch.zeros_like(x)], dim=1)
         p = torch.zeros_like(x)
         return torch.cat([u, p], dim=1)
+    
+
+class ABCModel(torch.nn.Module):
+    """Returns the ABC flow solution for testing."""
+
+    def __init__(self, A=1.0, B=1.0, C=1.0):
+        super().__init__()
+        self.A = A
+        self.B = B
+        self.C = C
+
+    @staticmethod
+    def sample_points(
+        n: int,
+        t_range: Tuple[float, float] = (0.0, 0.0),
+        x_range: Tuple[float, float] = (0.0, 2 * math.pi),
+        y_range: Tuple[float, float] = (0.0, 2 * math.pi),
+        z_range: Tuple[float, float] = (0.0, 2 * math.pi),
+        device: torch.device | None = None,
+    ) -> torch.Tensor:
+        def uni(lo: float, hi: float) -> torch.Tensor:
+            return lo + (hi - lo) * torch.rand(n, 1, device=device)
+
+        t = uni(*t_range)
+        x = uni(*x_range)
+        y = uni(*y_range)
+        z = uni(*z_range)
+        return torch.cat([t, x, y, z], dim=1)
+
+
+    def forward(self, txyz: torch.Tensor) -> torch.Tensor:
+        x = txyz[:, 1]
+        y = txyz[:, 2]
+        z = txyz[:, 3]
+
+        u = self.A * torch.sin(z) + self.C * torch.cos(y)
+        v = self.B * torch.sin(x) + self.A * torch.cos(z)
+        w = self.C * torch.sin(y) + self.B * torch.cos(x)
+
+        vel2 = u * u + v * v + w * w
+        p = -0.5 * vel2
+
+        return torch.stack([u, v, w, p], dim=1)
 
 
 def make_inputs(N=16, device=None):
@@ -104,6 +149,16 @@ class TestEuler3DResiduals(unittest.TestCase):
         expected = torch.cat([x, torch.zeros_like(x), torch.zeros_like(x), torch.ones_like(x)], dim=1)
 
         self.assertTrue(torch.allclose(loss.pde, expected, atol=1e-6))
+    
+
+    def test_abc_solution_pde_residual_is_zero(self):
+        pde = Euler3DPDE()
+        model = ABCModel(A=1.0, B=1.0, C=1.0)
+        inputs = ABCModel.sample_points(10, device=pde.device)
+        inputs.requires_grad_(True)
+
+        loss = pde.residuals(model, inputs)
+        self.assertTrue(torch.allclose(loss.pde, torch.zeros_like(loss.pde), atol=1e-5))
 
 
 if __name__ == "__main__":
