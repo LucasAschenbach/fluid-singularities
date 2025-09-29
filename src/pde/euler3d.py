@@ -31,7 +31,6 @@ class Euler3DPDE(PDE):
         model: torch.nn.Module,
         inputs: torch.Tensor,
         bc: Optional[BoundaryData] = None,
-        data: Optional[torch.Tensor] = None,
     ) -> Euler3DLoss:
         """Compute PDE residuals and masked BC residuals.
 
