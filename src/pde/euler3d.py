@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Optional
-from _base import ResidualLoss, PDE
+from typing import Optional
+from .base import ResidualLoss, PDE, BoundaryData
 
 import torch
 
 
-@dataclass
 class Euler3DLoss(ResidualLoss):
     """Loss for 3D Euler equations."""
     pass
+
 
 class Euler3DPDE(PDE):
     """3D incompressible Euler PDE residuals using torch autograd.
@@ -23,29 +23,29 @@ class Euler3DPDE(PDE):
     """
 
     def __init__(self, rho: float = 1.0, device: Optional[torch.device] = None) -> None:
-        super().__init__(input_dim=4, output_dim=4)
+        super().__init__(input_dim=4, output_dim=4, device=device)
         self.rho = rho
-        self.device = device
-
-    @staticmethod
-    def _grad(outputs: torch.Tensor, inputs: torch.Tensor) -> torch.Tensor:
-        return torch.autograd.grad(outputs, inputs, grad_outputs=torch.ones_like(outputs), create_graph=True)[0]
 
     def residuals(
         self,
         model: torch.nn.Module,
-        txyz: torch.Tensor,
-        data_target: Optional[torch.Tensor] = None,
+        inputs: torch.Tensor,
+        bc: Optional[BoundaryData] = None,
+        data: Optional[torch.Tensor] = None,
     ) -> Euler3DLoss:
-        """Compute PDE residuals at collocation points.
+        """Compute PDE residuals and masked BC residuals.
 
         Args:
             model: network mapping (t,x,y,z)->(u,v,w,p)
-            txyz: [N,4] requires_grad=True
-            data_target: optional supervised target [N,4]
+            inputs: [N,4] requires_grad=True
+            bc: optional BoundaryData to enforce Dirichlet conditions with an
+                optional per-output mask.
+            data: DEPRECATED. If provided (and `bc` is None), treated as a
+                  fully-specified Dirichlet target with mask=1.
         Returns:
-            EulerLoss with pde, div, and optional data loss (MSE)
+            Euler3DLoss containing PDE residuals and optional BC residual.
         """
+        txyz = inputs
         assert txyz.requires_grad, "Input points must require grad for autograd derivatives."
 
         out = model(txyz)
@@ -95,11 +95,10 @@ class Euler3DPDE(PDE):
         # momentum residual
         mom_res = du_dt + conv + grad_p
 
-        # MSE losses
-        pde_loss = torch.cat([mom_res, div_u], dim=1)  # [N,4]
+        pde_residual = torch.cat([mom_res, div_u], dim=1)  # [N,4]
 
-        data_loss = None
-        if data_target is not None:
-            data_loss = out - data_target
+        bc_residual = None
+        if bc is not None:
+            bc_residual = bc.residual(out)
 
-        return Euler3DLoss(pde=pde_loss, data=data_loss)
+        return Euler3DLoss(pde=pde_residual, bc=bc_residual)
