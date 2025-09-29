@@ -47,7 +47,7 @@ This repository implements the techniques step by step:
 * [ ] **Self-Similar Solution Ansatz**
   Implement generalized ansatz:
 
-  $$\phi_A(x,t) = (1-t)^{k_A(\lambda)} , \Phi_A!\left(\tfrac{x}{(1-t)^{1+\lambda}}\right),
+  $$\phi_A(x,t) = (1-t)^{k_A(\lambda)} , \Phi_A\left(\tfrac{x}{(1-t)^{1+\lambda}}\right),
   \quad E_k(\Phi, \lambda) = 0$$
 
   with compactified coordinate transform:
