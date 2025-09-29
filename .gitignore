@@ -1,0 +1,13 @@
+# System
+.DS_Stores
+.envrc
+
+# IDE
+.vscode/
+
+# Python
+__pycache__/
+
+# Outputs
+logs/
+runs/
