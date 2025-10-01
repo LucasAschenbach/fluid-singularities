@@ -11,7 +11,7 @@ import torch
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
-from pde import Euler3DPDE
+from pde import Euler3DPDE, sample_rect_interior, sample_rect_boundary
 from model import MLP
 from utils import get_device, set_seed
 
@@ -20,6 +20,7 @@ from utils import get_device, set_seed
 class TrainConfig:
     epochs: int = 2000
     batch_size: int = 4096
+    bc_batch_size: int = 1024
     steps_per_epoch: int = 15
     lr: float = 1e-3
     w_pde: float = 1.0
@@ -28,7 +29,7 @@ class TrainConfig:
     ckpt: Optional[str] = None
     log_dir: str = "runs"
     run_name: str = "euler3d"
-    ckpt_interval: int = 5
+    ckpt_interval: int = 25
     device: str = get_device()
 
 
@@ -65,20 +66,19 @@ def train(cfg: TrainConfig) -> None:
     global_step = 0
     loss = torch.tensor(float("inf"))
     prev_loss_val = float("inf")
+
     for epoch in range(1, cfg.epochs + 1):
         # Sample collocation points once per epoch
-        txyz_epoch = torch.rand(cfg.batch_size, 4, device=device)
-        txyz_epoch = (
-            txyz_epoch * torch.tensor([b - a for a, b in domain], device=device)
-            + torch.tensor([a for a, b in domain], device=device)
-        )
+        txyz_epoch = sample_rect_interior(domain, cfg.batch_size, device)
+        if pde.bc is not None:
+            bc_points_epoch = sample_rect_boundary(domain, cfg.bc_batch_size, device)
 
         train_loop = tqdm(range(cfg.steps_per_epoch), desc=f"Epoch {epoch}/{cfg.epochs}")
         for step in train_loop:
             opt.zero_grad()
             txyz = txyz_epoch.detach().requires_grad_(True) # create fresh leaf tensor
 
-            residual = pde.residuals(model, txyz)
+            residual = pde.residuals(model, txyz, bc_inputs=bc_points_epoch)
             loss = residual.total(w_pde=cfg.w_pde, w_bc=cfg.w_bc)
 
             loss.backward()
@@ -116,6 +116,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Train a PINN on a PDE operator.")
     p.add_argument("--epochs", type=int, default=TrainConfig.epochs)
     p.add_argument("--batch-size", type=int, default=TrainConfig.batch_size)
+    p.add_argument("--bc-batch-size", type=int, default=TrainConfig.bc_batch_size)
     p.add_argument("--epoch-steps", type=int, default=TrainConfig.steps_per_epoch)
     p.add_argument("--lr", type=float, default=TrainConfig.lr)
     p.add_argument("--w-pde", type=float, default=TrainConfig.w_pde)
@@ -134,6 +135,7 @@ def main() -> None:
     cfg = TrainConfig(
         epochs=args.epochs,
         batch_size=args.batch_size,
+        bc_batch_size=args.bc_batch_size,
         steps_per_epoch=args.epoch_steps,
         lr=args.lr,
         w_pde=args.w_pde,

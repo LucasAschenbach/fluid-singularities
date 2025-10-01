@@ -119,13 +119,16 @@ class TestEuler3DResiduals(unittest.TestCase):
         inputs = make_inputs(N=5)
 
         # Target zeros for all outputs, but enforce only on velocity components
-        target = torch.zeros(inputs.shape[0], 4, dtype=inputs.dtype)
-        mask = torch.zeros_like(target)
+        def target_fn(points: torch.Tensor) -> torch.Tensor:
+            return points.new_zeros(points.shape[0], 4)
+
+        mask = torch.zeros(inputs.shape[0], 4, dtype=inputs.dtype, device=inputs.device)
         mask[:, 0:3] = 1.0  # enforce u,v,w only
-        bc = BoundaryData(target=target, mask=mask)
+        bc = BoundaryData(target_fn=target_fn, mask=mask)
         pde = Euler3DPDE(bc=bc)
 
-        loss = pde.residuals(model, inputs)
+        boundary_points = torch.zeros_like(inputs)
+        loss = pde.residuals(model, inputs, bc_inputs=boundary_points)
         expected_bc = torch.tensor([1.0, -2.0, 3.0, 0.0], dtype=inputs.dtype).repeat(inputs.shape[0], 1)
         self.assertIsNotNone(loss.bc)
         self.assertTrue(torch.allclose(loss.bc, expected_bc, atol=1e-7))
@@ -133,6 +136,29 @@ class TestEuler3DResiduals(unittest.TestCase):
         # Only BC contributes to total since PDE residual is zero for constant fields
         expected_total = torch.mean(expected_bc**2)
         self.assertTrue(torch.allclose(loss.total(w_pde=1.0, w_bc=1.0), expected_total, atol=1e-7))
+
+
+    def test_boundary_target_fn_uses_external_points(self):
+        def target_fn(points: torch.Tensor) -> torch.Tensor:
+            target = torch.zeros(points.shape[0], 4, dtype=points.dtype, device=points.device)
+            target[:, 3:4] = points[:, 1:2]  # tie pressure target to x-coordinate
+            return target
+
+        bc = BoundaryData(target_fn=target_fn)
+        pde = Euler3DPDE(bc=bc)
+        model = ModelConst(vals=(1.0, -2.0, 3.0, 4.0))
+
+        inputs = make_inputs(N=6)
+        boundary_points = torch.zeros_like(inputs)
+        boundary_points[:, 0] = 0.2  # t
+        boundary_points[:, 1] = 1.0  # x at boundary
+
+        loss = pde.residuals(model, inputs, bc_inputs=boundary_points)
+        expected_target = target_fn(boundary_points)
+        expected_bc = model(boundary_points) - expected_target
+
+        self.assertIsNotNone(loss.bc)
+        self.assertTrue(torch.allclose(loss.bc, expected_bc, atol=1e-7))
 
 
     def test_gradient_and_convection_terms_simple_field(self):

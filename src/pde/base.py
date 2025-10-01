@@ -20,36 +20,31 @@ class ResidualLoss:
 class BoundaryData:
     """Boundary condition specification.
 
-    This provides a structured way to encode boundary conditions (BCs) for
-    PINNs. Currently only Dirichlet conditions are supported in a flexible,
-    masked form.
-
-    Attributes:
-        target: [N, output_dim] tensor with desired values on boundary.
-        mask: Optional [N, output_dim] boolean/float mask (1=enforce, 0=ignore)
-              allowing selective enforcement per output component and point.
-        type: Type of boundary condition. Only "dirichlet" is supported now.
+    Only Dirichlet conditions are currently supported. The target is provided
+    by `target_fn`, which receives the boundary coordinates and returns the
+    desired model outputs at those locations.
     """
 
-    target: torch.Tensor
+    target_fn: typing.Callable[[torch.Tensor], torch.Tensor]
     mask: typing.Optional[torch.Tensor] = None
     type: str = "dirichlet"
 
-    def residual(self, output: torch.Tensor) -> torch.Tensor:
-        """Compute boundary residual for the provided model `output`.
-
-        For Dirichlet BCs, residual = mask * (output - target), with mask=1 if
-        not provided.
-        """
+    def residual(
+        self,
+        output: torch.Tensor,
+        points: torch.Tensor,
+    ) -> torch.Tensor:
+        """Compute boundary residual for the provided model `output`."""
         if self.type.lower() != "dirichlet":
             raise NotImplementedError(f"BC type '{self.type}' not supported.")
 
-        if self.mask is None:
-            return output - self.target
+        target = self.target_fn(points)
+        residual = output - target
 
-        # Allow boolean masks; ensure same dtype as output for multiplication
-        m = self.mask.to(dtype=output.dtype)
-        return (output - self.target) * m
+        if self.mask is None:
+            return residual
+
+        return residual * self.mask
 
 
 class PDE:
@@ -96,6 +91,7 @@ class PDE:
         self,
         model: torch.nn.Module,
         inputs: torch.Tensor,
+        bc_inputs: typing.Optional[torch.Tensor] = None,
     ) -> ResidualLoss:
         """Compute PDE residuals at collocation points and BC residuals.
 
@@ -103,8 +99,9 @@ class PDE:
             model: Network mapping inputs (e.g., (t,x,y,z)) to outputs
                    (e.g., (u,v,w,p)).
             inputs: [N, input_dim] with requires_grad=True for autograd.
-            bc: Optional boundary condition specification to enforce via a
-                masked Dirichlet residual on the model outputs.
+            bc_inputs: Optional [M, input_dim] boundary sample locations used
+                exclusively for boundary-condition residuals. Falls back to
+                `inputs` when omitted so existing calls remain valid.
         Returns:
             ResidualLoss with PDE residuals and optional boundary residuals.
         """

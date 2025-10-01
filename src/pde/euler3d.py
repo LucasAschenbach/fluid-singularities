@@ -30,6 +30,7 @@ class Euler3DPDE(PDE):
         self,
         model: torch.nn.Module,
         inputs: torch.Tensor,
+        bc_inputs: Optional[torch.Tensor] = None,
     ) -> Euler3DLoss:
         """Compute PDE residuals and masked BC residuals.
 
@@ -65,8 +66,9 @@ class Euler3DPDE(PDE):
 
         pde_residual = torch.cat([mom_res, div_u], dim=1)  # [N,4]
 
-        bc_residual = None
+        bc_residual: Optional[torch.Tensor] = None
         if self.bc is not None:
-            bc_residual = self.bc.residual(out)
+            bc_outputs = model(bc_inputs)
+            bc_residual = self.bc.residual(bc_outputs, points=bc_inputs)
 
         return Euler3DLoss(pde=pde_residual, bc=bc_residual)
