@@ -13,6 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from pde import (
     PDE,
+    PDEData,
     Euler3DPDE,
     Boussinesq2DSelfSimilarPDE,
     sample_rect_interior,
@@ -56,10 +57,23 @@ def train(cfg: TrainConfig) -> None:
 
 
     lam0 = 1.90  # a stable-ish value to start; later refine via infer_lambda()
+    data_norm = PDEData(
+        inputs=torch.tensor([[0.0, 0.0]
+                             [0.0, 8.0]
+                             [0.0, -8.0]
+                             [8.0, 0.0]
+                             [-8.0, 0.0]], dtype=torch.get_default_dtype(), device=device),
+        outputs=torch.tensor([[1.0]
+                              [0.0]
+                              [0.0]
+                              [0.0]
+                              [0.0]], dtype=torch.get_default_dtype(), device=device),
+    ) # normalizing conditions to fix scale and prevent trivial zero solution
     pde = Boussinesq2DSelfSimilarPDE(
         lambda_value=lam0,
         theta_decay_power=0.0,    # try 1.0 later for extra decay on Theta
         psi_decay_power=0.0,      # often 0 is fine; add mild decay if ∇Psi grows too much
+        data=data_norm,
     )
     domain = [(0,1), (-1,1)]  # q,β
 
