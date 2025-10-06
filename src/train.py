@@ -31,7 +31,8 @@ class TrainConfig:
     steps_per_epoch: int = 15
     lr: float = 1e-3
     w_pde: float = 1.0
-    w_bc: float = 0.1
+    w_bc: float = 1.0
+    w_data: float = 1.0
     seed: int = 42
     ckpt: Optional[str] = None
     log_dir: str = "runs"
@@ -100,7 +101,7 @@ def train(cfg: TrainConfig) -> None:
             txyz = txyz_epoch.detach().requires_grad_(True) # create fresh leaf tensor
 
             residual = pde.residuals(model, txyz, bc_inputs=bc_points_epoch)
-            loss = residual.total(w_pde=cfg.w_pde, w_bc=cfg.w_bc)
+            loss = residual.total(w_pde=cfg.w_pde, w_bc=cfg.w_bc, w_data=cfg.w_data)
 
             loss.backward()
             opt.step()
@@ -145,6 +146,7 @@ def build_argparser() -> argparse.ArgumentParser:
     p.add_argument("--lr", type=float, default=TrainConfig.lr)
     p.add_argument("--w-pde", type=float, default=TrainConfig.w_pde)
     p.add_argument("--w-bc", type=float, default=TrainConfig.w_bc)
+    p.add_argument("--w-data", type=float, default=TrainConfig.w_data)
     p.add_argument("--seed", type=int, default=TrainConfig.seed)
     p.add_argument("--ckpt", type=str, default=None)
     p.add_argument("--log-dir", type=str, default=TrainConfig.log_dir)
@@ -164,6 +166,7 @@ def main() -> None:
         lr=args.lr,
         w_pde=args.w_pde,
         w_bc=args.w_bc,
+        w_data=args.w_data,
         seed=args.seed,
         ckpt=args.ckpt,
         log_dir=args.log_dir,
