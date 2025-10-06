@@ -152,7 +152,6 @@ class Boussinesq2DSelfSimilarPDE(PDE):
 
         return Boussinesq2DLoss(pde=pde_residual, bc=bc_residual)
 
-    @torch.no_grad()
     def infer_lambda(
         self,
         model: torch.nn.Module,
