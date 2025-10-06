@@ -109,11 +109,14 @@ def train(cfg: TrainConfig) -> None:
                 loss=loss.item(),
                 pde=residual.pde.norm().item(),
                 bc=residual.bc.norm().item() if residual.bc is not None else 0.0,
+                data=residual.data.norm().item() if residual.data is not None else 0.0,
             )
             writer.add_scalar("loss/total", loss.item(), global_step)
             writer.add_scalar("loss/pde", residual.pde.norm().item(), global_step)
             if residual.bc is not None:
                 writer.add_scalar("loss/bc", residual.bc.norm().item(), global_step)
+            if residual.data is not None:
+                writer.add_scalar("loss/data", residual.data.norm().item(), global_step)
 
             global_step += 1
 
