@@ -26,7 +26,6 @@ def plot_mlp(cfg: PlotConfig) -> None:
     device = get_device()
     ckpt = torch.load(cfg.ckpt_path, map_location=device)
 
-    # Recreate model from checkpoint's config, if available
     model_cfg = ckpt.get("config", {})
     input_dim = model_cfg.get("in_dim", 2)    # Default for Boussinesq2DSelfSimilar
     output_dim = model_cfg.get("out_dim", 3)  # Default for Boussinesq2DSelfSimilar
