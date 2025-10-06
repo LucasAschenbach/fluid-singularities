@@ -20,7 +20,7 @@ from pde import (
     sample_rect_boundary
 )
 from model import MLP
-from utils import get_device, set_seed
+from utils import get_device, set_seed, mse
 
 
 @dataclass
@@ -109,16 +109,16 @@ def train(cfg: TrainConfig) -> None:
             # logging
             train_loop.set_postfix(
                 loss=loss.item(),
-                pde=residual.pde.norm().item(),
-                bc=residual.bc.norm().item() if residual.bc is not None else 0.0,
-                data=residual.data.norm().item() if residual.data is not None else 0.0,
+                pde=mse(residual.pde).item(),
+                bc=mse(residual.bc).item() if residual.bc is not None else 0.0,
+                data=mse(residual.data).item() if residual.data is not None else 0.0,
             )
             writer.add_scalar("loss/total", loss.item(), global_step)
-            writer.add_scalar("loss/pde", residual.pde.norm().item(), global_step)
+            writer.add_scalar("loss/pde", mse(residual.pde).item(), global_step)
             if residual.bc is not None:
-                writer.add_scalar("loss/bc", residual.bc.norm().item(), global_step)
+                writer.add_scalar("loss/bc", mse(residual.bc).item(), global_step)
             if residual.data is not None:
-                writer.add_scalar("loss/data", residual.data.norm().item(), global_step)
+                writer.add_scalar("loss/data", mse(residual.data).item(), global_step)
 
             global_step += 1
 

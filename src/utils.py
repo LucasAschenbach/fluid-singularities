@@ -13,3 +13,7 @@ def get_device() -> str:
         return "mps"
     else:
         return "cpu"
+
+
+def mse(x: torch.Tensor) -> torch.Tensor:
+    return torch.mean(x**2)
