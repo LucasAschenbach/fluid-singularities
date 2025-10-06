@@ -41,10 +41,10 @@ This repository implements the techniques step by step:
 
   * [x] 3D incompressible Euler equations (baseline test case).
   * [ ] 1D Córdoba-Córdoba-Fontelos equations (CCF).
-  * [ ] 2D Boussinesq equations (axisymmetric Euler analogue).
+  * [x] 2D Boussinesq equations (axisymmetric Euler analogue).
   * [ ] 2D Incompressible Porous Media (IPM) equations with boundary.
 
-* [ ] **Self-Similar Solution Ansatz**
+* [x] **Self-Similar Solution Ansatz**
   Implement generalized ansatz:
 
   $$\phi_A(x,t) = (1-t)^{k_A(\lambda)} \Phi_A\left(\tfrac{x}{(1-t)^{1+\lambda}}\right),
