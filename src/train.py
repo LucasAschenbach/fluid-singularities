@@ -42,6 +42,7 @@ class TrainConfig:
 
 def save_checkpoint(model: torch.nn.Module, cfg: TrainConfig, log_dir: str, name: str) -> None:
     ckpt_path = os.path.join(log_dir, name)
+    # TODO: include input/output dimensions
     torch.save({"model": model.state_dict(), "config": cfg.__dict__}, ckpt_path)
 
 
