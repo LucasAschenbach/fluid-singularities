@@ -11,7 +11,13 @@ import torch
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
-from pde import Euler3DPDE, sample_rect_interior, sample_rect_boundary
+from pde import (
+    PDE,
+    Euler3DPDE,
+    Boussinesq2DSelfSimilarPDE,
+    sample_rect_interior,
+    sample_rect_boundary
+)
 from model import MLP
 from utils import get_device, set_seed
 
@@ -28,7 +34,7 @@ class TrainConfig:
     seed: int = 42
     ckpt: Optional[str] = None
     log_dir: str = "runs"
-    run_name: str = "euler3d"
+    run_name: str = "boussinesq2d_selfsimilar"
     ckpt_interval: int = 25
     device: str = get_device()
 
@@ -48,17 +54,24 @@ def train(cfg: TrainConfig) -> None:
     device = torch.device(cfg.device)
     set_seed(cfg.seed)
 
-    pde = Euler3DPDE(device=device)
-    domain = [(0.0, 1.0),
-              (0.0, 1.0),
-              (0.0, 1.0),
-              (0.0, 1.0)]  # t,x,y,z in [0,1]
+
+    lam0 = 1.90  # a stable-ish value to start; later refine via infer_lambda()
+    pde = Boussinesq2DSelfSimilarPDE(
+        lambda_value=lam0,
+        theta_decay_power=0.0,    # try 1.0 later for extra decay on Theta
+        psi_decay_power=0.0,      # often 0 is fine; add mild decay if ∇Psi grows too much
+    )
+    domain = [(0,1), (-1,1)]  # q,β
 
     # Model
     # TODO: load from checkpoint if provided
-    model = MLP(in_dim=pde.input_dim, out_dim=pde.output_dim,
-            hidden_layers=[128, 128, 128, 128], activation="tanh",
-            use_positional_encoding=True).to(device)
+    model = MLP(
+        in_dim=pde.input_dim,
+        out_dim=pde.output_dim,
+        hidden_layers=[128, 128, 128, 128],
+        activation="tanh",
+        use_positional_encoding=True
+    ).to(device)
 
     opt = optim.Adam(model.parameters(), lr=cfg.lr)
 
@@ -70,6 +83,7 @@ def train(cfg: TrainConfig) -> None:
     for epoch in range(1, cfg.epochs + 1):
         # Sample collocation points once per epoch
         txyz_epoch = sample_rect_interior(domain, cfg.batch_size, device)
+        bc_points_epoch = None
         if pde.bc is not None:
             bc_points_epoch = sample_rect_boundary(domain, cfg.bc_batch_size, device)
 
