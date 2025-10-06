@@ -58,16 +58,8 @@ def train(cfg: TrainConfig) -> None:
 
     lam0 = 1.90  # a stable-ish value to start; later refine via infer_lambda()
     data_norm = PDEData(
-        inputs=torch.tensor([[0.0, 0.0]
-                             [0.0, 8.0]
-                             [0.0, -8.0]
-                             [8.0, 0.0]
-                             [-8.0, 0.0]], dtype=torch.get_default_dtype(), device=device),
-        outputs=torch.tensor([[1.0]
-                              [0.0]
-                              [0.0]
-                              [0.0]
-                              [0.0]], dtype=torch.get_default_dtype(), device=device),
+        inputs=torch.tensor([[0.0, 0.0], [8.0, 0.0], [8.0, 8.0], [0.0, 8.0], [-8.0, 8.0], [-8.0, 0.0], [-8.0, -8.0], [0.0, -8.0], [8.0, -8.0]], dtype=torch.get_default_dtype(), device=device),
+        outputs=torch.tensor([[1.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0], [0.0]], dtype=torch.get_default_dtype(), device=device),
     ) # normalizing conditions to fix scale and prevent trivial zero solution
     pde = Boussinesq2DSelfSimilarPDE(
         lambda_value=lam0,
