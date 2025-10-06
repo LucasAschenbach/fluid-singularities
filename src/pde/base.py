@@ -66,8 +66,8 @@ class PDE:
 
     def __init__(
         self,
-        input_dim: int = 4,
-        output_dim: int = 4,
+        input_dim: int,
+        output_dim: int,
         bc: typing.Optional[PDEBoundaryData] = None,
         data: typing.Optional[PDEData] = None,
         loss_cls: typing.Type[ResidualLoss] = ResidualLoss,
@@ -75,8 +75,8 @@ class PDE:
         """Initialize PDE with input/output dimensions.
         
         Args:
-            input_dim: Input dimension (default 4 for t,x,y,z)
-            output_dim: Output dimension (default 4 for u,v,w,p)
+            input_dim: Input dimension
+            output_dim: Output dimension
             bc: optional PDEBoundaryData to enforce Dirichlet conditions with an
                 optional per-output mask.
             data: optional PDEData to enforce targets at fixed input locations.
