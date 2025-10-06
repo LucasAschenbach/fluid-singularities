@@ -90,7 +90,7 @@ def train(cfg: TrainConfig) -> None:
 
     for epoch in range(1, cfg.epochs + 1):
         # Sample collocation points once per epoch
-        txyz_epoch = sample_rect_interior(domain, cfg.batch_size, device)
+        points_epoch = sample_rect_interior(domain, cfg.batch_size, device)
         bc_points_epoch = None
         if pde.bc is not None:
             bc_points_epoch = sample_rect_boundary(domain, cfg.bc_batch_size, device)
@@ -98,9 +98,9 @@ def train(cfg: TrainConfig) -> None:
         train_loop = tqdm(range(cfg.steps_per_epoch), desc=f"Epoch {epoch}/{cfg.epochs}")
         for step in train_loop:
             opt.zero_grad()
-            txyz = txyz_epoch.detach().requires_grad_(True) # create fresh leaf tensor
+            points = points_epoch.detach().requires_grad_(True) # create fresh leaf tensor
 
-            residual = pde.residuals(model, txyz, bc_inputs=bc_points_epoch)
+            residual = pde.residuals(model, points, bc_inputs=bc_points_epoch)
             loss = residual.total(w_pde=cfg.w_pde, w_bc=cfg.w_bc, w_data=cfg.w_data)
 
             loss.backward()
