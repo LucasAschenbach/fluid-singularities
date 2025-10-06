@@ -151,3 +151,20 @@ class Boussinesq2DSelfSimilarPDE(PDE):
             bc_residual = self.bc.residual(bc_out, points=bc_inputs)
 
         return Boussinesq2DLoss(pde=pde_residual, bc=bc_residual)
+
+    @torch.no_grad()
+    def infer_lambda(
+        self,
+        model: torch.nn.Module,
+        center: tuple[float, float] = (0.0, 0.0),
+    ) -> float:
+        r"""Estimate λ via the local identity λ = -3 - 2 * ∂_{y1} U1(0,0), with U1 = ∂_{y2} Psi."""
+        y0 = torch.tensor([center], dtype=torch.get_default_dtype(), requires_grad=True)  # [1,2]
+        Omega, Theta, Psi = self._compose_fields(model, y0, self.lambda_value)  # Psi: [1]
+        # U1 = ∂_{y2} Psi at y0
+        dPsi = self._grad(Psi, y0)                 # [1,2]
+        U1 = dPsi[:, 1:2]                          # [1,1]
+        # ∂_{y1} U1 = ∂_{y1}∂_{y2} Psi via a second gradient
+        g = self._grad(U1, y0)                     # [1,2]
+        dU1_dy1 = g[:, 0].item()
+        return -3.0 - 2.0 * dU1_dy1
