@@ -46,15 +46,20 @@ This repository implements the techniques step by step:
   * [ ] 2D Incompressible Porous Media (IPM) equations with boundary.
 
 * [x] **Self-Similar Solution Ansatz**
-  Implement generalized ansatz:
 
-  $$\phi_A(x,t) = (1-t)^{k_A(\lambda)} \Phi_A\left(\tfrac{x}{(1-t)^{1+\lambda}}\right),
-  \quad E_k(\Phi, \lambda) = 0$$
+  * [x] Implement generalized ansatz:
 
-  with compactified coordinate transform:
+    $$\phi_A(x,t) = (1-t)^{k_A(\lambda)} \Phi_A\left(\tfrac{x}{(1-t)^{1+\lambda}}\right),
+    \quad E_k(\Phi, \lambda) = 0$$
 
-  $$q = (1+|y|^2)^{-\frac{1}{2(1+\lambda)}},
-  \quad \beta = \tfrac{y_2}{\sqrt{1+|y|^2}}.$$
+    with compactified coordinate transform:
+
+    $$q = (1+|y|^2)^{-\frac{1}{2(1+\lambda)}},
+    \quad \beta = \tfrac{y_2}{\sqrt{1+|y|^2}}.$$
+
+  * [x] Train with fixed λ values and standard optimizer to reproduce known stable singularities. (residuals $\sim 10^{-8}$)
+   
+     <img src="media/boussinesq_selfsimilar_1.png">
 
 * [ ] **Admissible λ Discovery**
 
