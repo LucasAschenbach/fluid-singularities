@@ -12,7 +12,7 @@ if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
 from pde.boussinesq2d_selfsimilar import Boussinesq2DSelfSimilarPDE  # noqa: E402
-from pde.base import BoundaryData  # noqa: E402
+from pde.base import PDEBoundaryData  # noqa: E402
 
 
 def make_inputs(n: int = 8, device: torch.device | None = None) -> torch.Tensor:
@@ -59,7 +59,7 @@ class TestBoussinesq2DSelfSimilar(unittest.TestCase):
             target[:, 2:3] = points[:, 0:1]  # tie third output to y1 boundary coordinate
             return target
 
-        bc = BoundaryData(target_fn=target_fn)
+        bc = PDEBoundaryData(target_fn=target_fn)
         pde = Boussinesq2DSelfSimilarPDE(lambda_value=0.0, bc=bc)
         model = FeatureLinearModel()
 
@@ -69,9 +69,7 @@ class TestBoussinesq2DSelfSimilar(unittest.TestCase):
         loss = pde.residuals(model, inputs, bc_inputs=boundary_points)
         self.assertIsNotNone(loss.bc)
 
-        q, beta = pde._compactify(boundary_points, pde.lambda_value)[1:]
-        bc_feats = torch.stack([q, beta], dim=-1)
-        expected_bc = model(bc_feats) - target_fn(boundary_points)
+        expected_bc = model(boundary_points) - target_fn(boundary_points)
 
         self.assertTrue(torch.allclose(loss.bc, expected_bc, atol=1e-7))
 

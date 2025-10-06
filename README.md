@@ -33,6 +33,7 @@ This repository implements the techniques step by step:
 
   * [x] Implement generic PINN architecture with residual-based loss.
   * [x] Support for Dirichlet boundary conditions and normalization constraints.
+  * [x] Support supervised data loss at fixed points.
   * [x] Train/test on toy PDEs (baseline convergence).
    
      <img src="media/pinn_test_3d_euler.png" width="250">

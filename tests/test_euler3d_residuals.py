@@ -14,7 +14,7 @@ if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
 from pde.euler3d import Euler3DPDE  # noqa: E402
-from pde.base import BoundaryData  # noqa: E402
+from pde.base import PDEBoundaryData  # noqa: E402
 
 
 class ModelZero(torch.nn.Module):
@@ -124,12 +124,13 @@ class TestEuler3DResiduals(unittest.TestCase):
 
         mask = torch.zeros(inputs.shape[0], 4, dtype=inputs.dtype, device=inputs.device)
         mask[:, 0:3] = 1.0  # enforce u,v,w only
-        bc = BoundaryData(target_fn=target_fn, mask=mask)
+        bc = PDEBoundaryData(target_fn=target_fn, mask=mask)
         pde = Euler3DPDE(bc=bc)
 
         boundary_points = torch.zeros_like(inputs)
         loss = pde.residuals(model, inputs, bc_inputs=boundary_points)
         expected_bc = torch.tensor([1.0, -2.0, 3.0, 0.0], dtype=inputs.dtype).repeat(inputs.shape[0], 1)
+
         self.assertIsNotNone(loss.bc)
         self.assertTrue(torch.allclose(loss.bc, expected_bc, atol=1e-7))
 
@@ -144,7 +145,7 @@ class TestEuler3DResiduals(unittest.TestCase):
             target[:, 3:4] = points[:, 1:2]  # tie pressure target to x-coordinate
             return target
 
-        bc = BoundaryData(target_fn=target_fn)
+        bc = PDEBoundaryData(target_fn=target_fn)
         pde = Euler3DPDE(bc=bc)
         model = ModelConst(vals=(1.0, -2.0, 3.0, 4.0))
 
@@ -180,7 +181,7 @@ class TestEuler3DResiduals(unittest.TestCase):
     def test_abc_solution_pde_residual_is_zero(self):
         pde = Euler3DPDE()
         model = ModelABC(A=1.0, B=1.0, C=1.0)
-        inputs = ModelABC.sample_points(10, device=pde.device)
+        inputs = ModelABC.sample_points(10)
         inputs.requires_grad_(True)
 
         loss = pde.residuals(model, inputs)

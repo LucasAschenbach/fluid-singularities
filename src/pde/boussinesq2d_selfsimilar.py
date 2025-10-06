@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Callable
+from typing import Optional, Callable, cast
 
 import torch
 
-from .base import ResidualLoss, PDE, BoundaryData
+from .base import ResidualLoss, PDE, PDEBoundaryData, PDEData
 
 
 @dataclass
@@ -52,10 +52,10 @@ class Boussinesq2DSelfSimilarPDE(PDE):
         lambda_value: float,
         theta_decay_power: float = 0.0,
         psi_decay_power: float = 0.0,
-        bc: Optional[BoundaryData] = None,
-        device: Optional[torch.device] = None,
+        bc: Optional[PDEBoundaryData] = None,
+        data: Optional[PDEData] = None,
     ) -> None:
-        super().__init__(input_dim=2, output_dim=3, bc=bc, device=device)
+        super().__init__(input_dim=2, output_dim=3, bc=bc, data=data, loss_cls=Boussinesq2DLoss)
         self.lambda_value = float(lambda_value)
         self.theta_decay_power = float(theta_decay_power)
         self.psi_decay_power = float(psi_decay_power)
@@ -106,7 +106,15 @@ class Boussinesq2DSelfSimilarPDE(PDE):
         inputs: torch.Tensor,
         bc_inputs: Optional[torch.Tensor] = None,
     ) -> Boussinesq2DLoss:
-        """Compute self-similar Boussinesq residuals at collocation points and optional BC residuals."""
+        """Compute self-similar Boussinesq residuals at collocation points and optional BC residuals.
+        
+        Args:
+            model: network mapping (q,beta)->(hOmega,hTheta,hPsi)
+            inputs: [N,2] requires_grad=True
+            bc_inputs: [M,2] points for BC residuals (if self.bc is not None)
+        Returns:
+            Boussinesq2DLoss containing PDE residuals and optional BC residual.
+        """
         y = inputs
         assert y.ndim == 2 and y.shape[-1] == 2, "inputs must be [N,2] similarity points (y1,y2)."
         assert y.requires_grad, "Input points must require grad for autograd derivatives."
@@ -145,12 +153,14 @@ class Boussinesq2DSelfSimilarPDE(PDE):
 
         pde_residual = torch.stack([R_omega, R_theta, R_psi], dim=1)  # [N,3]
 
-        bc_residual: Optional[torch.Tensor] = None
-        if self.bc is not None:
-            bc_out = model(torch.stack(self._compactify(bc_inputs, lam)[1:], dim=-1))
-            bc_residual = self.bc.residual(bc_out, points=bc_inputs)
-
-        return Boussinesq2DLoss(pde=pde_residual, bc=bc_residual)
+        return cast(
+            Boussinesq2DLoss,
+            self._build_residual_loss(
+                pde_residual=pde_residual,
+                model=model,
+                bc_inputs=bc_inputs,
+            ),
+        )
 
     def infer_lambda(
         self,

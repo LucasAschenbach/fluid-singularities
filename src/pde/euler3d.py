@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
-from .base import ResidualLoss, PDE, BoundaryData
+from typing import Optional, cast
+from .base import ResidualLoss, PDE, PDEBoundaryData, PDEData
 
 import torch
 
@@ -22,8 +22,8 @@ class Euler3DPDE(PDE):
     Network maps (t, x, y, z) -> (u, v, w, p).
     """
 
-    def __init__(self, rho: float = 1.0, bc: Optional[BoundaryData] = None, device: Optional[torch.device] = None) -> None:
-        super().__init__(input_dim=4, output_dim=4, bc=bc, device=device)
+    def __init__(self, rho: float = 1.0, bc: Optional[PDEBoundaryData] = None, data: Optional[PDEData] = None) -> None:
+        super().__init__(input_dim=4, output_dim=4, bc=bc, data=data, loss_cls=Euler3DLoss)
         self.rho = rho
 
     def residuals(
@@ -37,6 +37,7 @@ class Euler3DPDE(PDE):
         Args:
             model: network mapping (t,x,y,z)->(u,v,w,p)
             inputs: [N,4] requires_grad=True
+            bc_inputs: [M,4] points for BC residuals (if self.bc is not None)
         Returns:
             Euler3DLoss containing PDE residuals and optional BC residual.
         """
@@ -66,9 +67,11 @@ class Euler3DPDE(PDE):
 
         pde_residual = torch.cat([mom_res, div_u], dim=1)  # [N,4]
 
-        bc_residual: Optional[torch.Tensor] = None
-        if self.bc is not None:
-            bc_outputs = model(bc_inputs)
-            bc_residual = self.bc.residual(bc_outputs, points=bc_inputs)
-
-        return Euler3DLoss(pde=pde_residual, bc=bc_residual)
+        return cast(
+            Euler3DLoss,
+            self._build_residual_loss(
+                pde_residual=pde_residual,
+                model=model,
+                bc_inputs=bc_inputs,
+            ),
+        )
