@@ -18,6 +18,16 @@ class ResidualLoss:
             parts.append(w_data * torch.mean(self.data**2))
         return sum(parts)
 
+    def max(self, exclude_pde: bool = False, exclude_bc: bool = False, exclude_data: bool = False) -> torch.Tensor:
+        parts = []
+        if not exclude_pde:
+            parts.append(torch.max(torch.abs(self.pde)))
+        if self.bc is not None and not exclude_bc:
+            parts.append(torch.max(torch.abs(self.bc)))
+        if self.data is not None and not exclude_data:
+            parts.append(torch.max(torch.abs(self.data)))
+        return max(parts)
+
 
 @dataclass
 class PDEBoundaryData:

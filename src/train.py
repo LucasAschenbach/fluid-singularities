@@ -122,6 +122,9 @@ def train(cfg: TrainConfig) -> None:
 
             global_step += 1
 
+        writer.add_scalar("loss/max_total", residual.max().item(), global_step-1)
+        print(f"max_total_loss: {residual.max().item():.6e}")
+
         if epoch % cfg.ckpt_interval == 0 and epoch > 0:
             save_checkpoint(model, cfg, log_dir, f"model_{epoch}.pt")
         if loss.item() < prev_loss_val and epoch > cfg.ckpt_interval:
