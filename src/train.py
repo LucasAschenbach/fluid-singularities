@@ -80,6 +80,7 @@ def train(cfg: TrainConfig) -> None:
         activation="tanh",
         use_positional_encoding=True
     ).to(device)
+    print(f"Model has {sum(p.numel() for p in model.parameters() if p.requires_grad)} trainable parameters.")
 
     opt = optim.Adam(model.parameters(), lr=cfg.lr)
 
